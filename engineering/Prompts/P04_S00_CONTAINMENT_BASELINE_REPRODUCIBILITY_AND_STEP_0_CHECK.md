@@ -1,0 +1,13 @@
+> **Required attachment:** `GLOBAL_CONTRACT.md` plus the current repository, audit, approved plan, and latest handoff artifacts. This prompt inherits the entire Global Contract.
+
+# P04 — S00 CONTAINMENT, BASELINE REPRODUCIBILITY AND STEP-0 CHECK
+
+**Mode: CODE CHANGES LIMITED TO APPROVED S00 OR PRECONDITION ONLY. LIVE DISABLED.**
+
+Read the GLOBAL CONTRACT, approved plan P03, current repository ZIP and trackers. Before editing, confirm exact source SHA-256/commit/dependencies, active paper/testnet/live default and all entry points. Record whether a separate emergency `Step 0` is actually necessary; if S00 already exists, use that ID. Do not invent a free-form emergency step that bypasses change control. If a previously unrecognized urgent precondition is found, open `CR-###`, mark impacted steps blocked, have the Auditor approve the amended scope, and implement **only** the approved containment action.
+
+**Baseline containment:** Work on a non-live copy/branch. Confirm no start/test command will connect to a production exchange or submit orders; inspect config/environment precedence and secrets references, CI/test bootstrap, endpoints, operator dashboard actions, live readiness guards and stop/kill-switch behavior. Inventory all repository and state files, SQLite schema versions, current config keys, model manifests/pointers, test collection and Python/dependency versions. Run only non-trading offline/import/test discovery commands demonstrably safe under blocked network and neutral mock credentials. Capture actual results and any failing baseline tests without normalizing known-bad assertions as correct.
+
+If code must be changed for S00, list **each** proposed file, function, test, config, env precedence and behavior change before edits; make the smallest approved change; add a negative test for failure mode; run safe targeted and dependent regression tests; reproduce originally unsafe condition where practical. If safe containment cannot be implemented with available evidence, stop with `BLOCKED_BY_EVIDENCE` and give the precise data/approval required. Never launch training, a live controller or dashboard with writable live controls merely to collect logs.
+
+**Required outputs:** immutable baseline manifest (`branch/hash`, source archive hash, Python/lockfile, config/mode and env redacted, actual commands/results, source baseline state, known failures); updated full repository ZIP if changed, unified diff, changed-file checksums, S00 test evidence, current finding/step trackers, rollback notes, and Auditor verdict `S00_PASS / S00_FAIL / BLOCKED`. All secrets redacted. **Do not automatically proceed to S01 or another step.**

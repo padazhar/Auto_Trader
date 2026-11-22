@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Sensitive credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local runtime artifacts
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated model binaries
+*.pkl
+*.joblib
+*.onnx
+*.pt
+*.pth
+
+# IDE
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak

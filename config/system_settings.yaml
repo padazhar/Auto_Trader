@@ -1,0 +1,459 @@
+system:
+  timezone: UTC
+  random_seed: 42
+  environment: dev
+
+market:
+  futures_base_url: https://fapi.binance.com
+  use_binance_http_updater: true
+  refresh_universe_enabled: true
+  refresh_universe_sec: 300
+  top_n: 15
+  fast_frames: ["1m", "3m", "5m", "15m"]
+  slow_frames: ["30m", "1h", "4h", "1d"]
+  sem_fast: 8
+  sem_slow: 4
+  fetch_timeout_sec: 10
+  max_retries: 4
+  backoff_base_sec: 0.75
+  klines_limit: 1000
+  request_timeout_sec: 10
+  request_retries: 3
+  bar_close_delay_ms: 2000
+  server_time_cache_ms: 180000
+  runtime_snapshot_interval_sec: 5
+  runtime_price_websocket_enabled: true
+  runtime_price_websocket_url: wss://fstream.binance.com/market/ws/!markPrice@arr@1s
+  runtime_price_websocket_reconnect_sec: 5
+  lookback_days:
+    "1m": 5
+    "3m": 5
+    "5m": 7
+    "15m": 15
+    "30m": 20
+    "1h": 30
+    "4h": 60
+    "1d": 120
+
+symbols:
+  target_active_symbols: 10
+  ranked_universe_size: 20
+  max_failures_before_block: 3
+  auto_replace_symbols: true
+  allow_manual_unblock: true
+  manual_unblock_required: true
+  close_position_on_block: true
+  live_block_close_fail_closed: true
+  warmup_timeout_sec: 14400
+
+frames:
+  anchor_interval: "15m"
+  fusion_intervals: ["1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d"]
+  lookback_rows:
+    "1m": 3000
+    "3m": 2000
+    "5m": 1500
+    "15m": 1200
+    "30m": 1100
+    "1h": 1000
+    "4h": 800
+    "1d": 500
+
+labels:
+  horizon_bars: 3
+  atr_multiplier: 0.25
+  atr_floor: 0.0004
+  dqn_horizon_bars: 1
+  dqn_hold_threshold: 0.0015
+  class_encoding:
+    short: 0
+    hold: 1
+    long: 2
+  interval_overrides:
+    "1m": {horizon_bars: 5, atr_multiplier: 0.32, atr_floor: 0.0006}
+    "3m": {horizon_bars: 4, atr_multiplier: 0.30, atr_floor: 0.0006}
+    "5m": {horizon_bars: 3, atr_multiplier: 0.28, atr_floor: 0.0005}
+    "15m": {horizon_bars: 2, atr_multiplier: 0.25, atr_floor: 0.0004}
+
+training:
+  retrain_cycles:
+    "15m": 1
+    "5m": 2
+    "3m": 4
+    "1m": 7
+  validation:
+    walk_forward_folds: 4
+    purge_rows: 2
+    embargo_rows: 1
+  promotion:
+    enabled: true
+    allow_initial_promotion: true
+    # Evidence-backed promotion remains blocked until valid paper evidence exists.
+    allow_initial_promotion_without_paper_trades: false
+    # Permit an initial paper-only bootstrap incumbent so the system can
+    # collect clean paper outcomes. This stage is never live eligible.
+    allow_initial_paper_bootstrap_execution: true
+    require_outperform_incumbent: true
+    min_fold_count: 3
+    min_score_improvement: 0.002
+    min_metric_improvement: 0.001
+    max_metric_regression: 0.01
+    min_precision_macro: 0.16
+    min_roc_auc_ovr: 0.56
+    min_balanced_accuracy: 0.38
+    min_precision: 0.52
+    min_roc_auc: 0.56
+    require_directional_quality: true
+    min_long_precision: 0.20
+    min_short_precision: 0.20
+    min_long_recall: 0.05
+    min_short_recall: 0.05
+    max_hold_prediction_fraction: 0.85
+    min_directional_prediction_fraction: 0.05
+    require_paper_expectancy: true
+    paper_lookback_trades: 25
+    min_paper_trades: 5
+    min_paper_expectancy_usd: 0.0
+    min_paper_win_rate: 0.45
+    max_paper_drawdown_usd: -50.0
+    require_calibration_quality: true
+    max_expected_calibration_error: 0.25
+    max_brier_score: 0.75
+  artifact_lifecycle:
+    enabled: true
+    prune_after_training: true
+    keep_last_candidates: 3
+    max_candidate_age_hours: 24
+    max_deleted_per_run: 200
+    protect_promoted: true
+  rf:
+    enabled: true
+    n_estimators: 260
+    max_depth: 11
+    min_samples_leaf: 15
+    max_samples: 0.70
+    test_size: 0.16
+    random_state: 42
+    n_jobs: 1
+    min_rows: 450
+    max_age_minutes: 120
+    tail_rows: 2500
+    class_weight: balanced_subsample
+    interval_overrides:
+      "1m": {n_estimators: 160, max_depth: 9, min_samples_leaf: 15, max_samples: 0.50, test_size: 0.18, min_rows: 350, tail_rows: 1800}
+      "3m": {n_estimators: 200, max_depth: 10, min_samples_leaf: 15, max_samples: 0.60, test_size: 0.16, min_rows: 400, tail_rows: 2200}
+      "5m": {n_estimators: 260, max_depth: 11, min_samples_leaf: 15, max_samples: 0.70, test_size: 0.15, min_rows: 450, tail_rows: 2500}
+      "15m": {n_estimators: 400, max_depth: 12, min_samples_leaf: 15, max_samples: 0.80, test_size: 0.12, min_rows: 550, tail_rows: 3200}
+  gbm:
+    enabled: true
+    # Step 7 architecture contract: keep HistGBM as the rollback/default estimator.
+    # LightGBM may only be enabled in later governed candidate steps.
+    estimator: histgbm
+    n_estimators: 280
+    learning_rate: 0.04
+    max_depth: 3
+    test_size: 0.16
+    random_state: 42
+    min_rows: 450
+    max_age_minutes: 180
+    tail_rows: 2500
+    min_samples_leaf: 20
+    interval_overrides:
+      "1m": {n_estimators: 180, learning_rate: 0.05, max_depth: 2, test_size: 0.18, min_rows: 350, tail_rows: 1800, min_samples_leaf: 24}
+      "3m": {n_estimators: 220, learning_rate: 0.045, max_depth: 2, test_size: 0.16, min_rows: 400, tail_rows: 2200, min_samples_leaf: 22}
+      "5m": {n_estimators: 280, learning_rate: 0.04, max_depth: 3, test_size: 0.15, min_rows: 450, tail_rows: 2500, min_samples_leaf: 20}
+      "15m": {n_estimators: 360, learning_rate: 0.035, max_depth: 3, test_size: 0.12, min_rows: 550, tail_rows: 3200, min_samples_leaf: 18}
+  dqn:
+    enabled: true
+    allowed_intervals: ["15m", "5m"]
+    n_estimators: 220
+    max_depth: 8
+    test_size: 0.18
+    random_state: 42
+    min_rows: 700
+    max_age_minutes: 240
+    tail_rows: 3000
+    interval_overrides:
+      "5m": {n_estimators: 180, max_depth: 7, test_size: 0.20, min_rows: 650, tail_rows: 2200}
+      "15m": {n_estimators: 260, max_depth: 9, test_size: 0.16, min_rows: 800, tail_rows: 3200}
+  hmm:
+    # Step 10 candidate/shadow contract. HMM may train candidate artefacts and
+    # publish shadow telemetry only. Mandatory paper gating and live influence
+    # remain disabled until later explicitly approved steps.
+    enabled: true
+    candidate_training_enabled: true
+    mandatory_paper_gate_enabled: false
+    live_influence_enabled: false
+    shadow_only: true
+    observation_schema_version: hmm_observation_v1
+    n_states: 4
+    covariance_type: diag
+    min_rows: 1000
+    max_age_minutes: 240
+    tail_rows: 3000
+    random_state: 42
+    max_iter: 200
+    min_posterior_confidence: 0.60
+
+scheduling:
+  max_rf_workers: 2
+  max_gbm_workers: 2
+  max_dqn_workers: 1
+  loop_sleep_sec: 1.0
+  priority_intervals: ["15m", "5m", "3m", "1m"]
+  fairness_fast_timeframes: ["1m", "3m"]
+  fairness_anchor_timeframes: ["15m"]
+  fairness_secondary_timeframes: ["5m"]
+  deprioritize_anchor_after_ready: true
+  allow_parallel_symbols: true
+  failure_cooldown_sec: 60
+  symbol_failure_retry_threshold: 1
+  symbol_backoff_first_sec: 600
+  symbol_backoff_repeat_sec: 1800
+  max_submissions_per_loop: 3
+  max_submissions_per_symbol_per_loop: 1
+  max_model_submissions_per_loop:
+    rf: 1
+    gbm: 1
+    dqn: 1
+    hmm: 1
+  retrain_min_new_bars:
+    rf:
+      "1m": 7
+      "3m": 4
+      "5m": 2
+      "15m": 1
+    gbm:
+      "1m": 7
+      "3m": 4
+      "5m": 2
+      "15m": 1
+    dqn:
+      "1m": 7
+      "3m": 4
+      "5m": 2
+      "15m": 1
+    hmm:
+      "1m": 7
+      "3m": 4
+      "5m": 2
+      "15m": 1
+
+inference:
+  active_mode: Medium
+  minimum_models_required: 2
+  tail_rows: 500
+  quality:
+    min_rows: 250
+    min_precision_macro: 0.10
+    min_roc_auc_ovr: 0.50
+    min_balanced_accuracy: 0.34
+    anchor_interval: "15m"
+  consensus:
+    enter_threshold: 0.10
+    flip_threshold: 0.07
+    exit_band: 0.04
+    direction_score_threshold: 0.02
+    require_agreement: false
+  weights:
+    rf: 0.50
+    gbm: 0.40
+    dqn: 0.00
+  dqn:
+    gray_band_low: 0.45
+    gray_band_high: 0.55
+    action_hold: 0
+    action_long: 1
+    action_short: 2
+  hmm:
+    # Step 12 paper-entry gate contract. HMM is a mandatory confirmer for
+    # new paper entries/flips only. It remains excluded from RF/GBM EV maths,
+    # risk, sizing, leverage, exits, and all live influence.
+    enabled: true
+    candidate_shadow_enabled: true
+    mandatory_paper_gate_enabled: true
+    live_influence_enabled: false
+    require_valid_artifact_for_entry: true
+    min_posterior_confidence: 0.60
+  ev:
+    threshold: 0.00005
+    meta_threshold: 0.50
+    dqn_adjustment_strength: 0.0
+    strong_anchor_probability: 0.58
+    weak_anchor_probability: 0.51
+    weak_anchor_lower_tf_scale: 0.60
+  mode_profiles:
+    Light:
+      ev_threshold: 0.00005
+      min_atr_fraction: 0.0008
+      short_probability_threshold: 0.53
+      long_probability_threshold: 0.53
+      consensus_enter_threshold: 0.12
+      consensus_flip_threshold: 0.07
+      exit_band: 0.03
+    Medium:
+      ev_threshold: 0.00005
+      min_atr_fraction: 0.0010
+      short_probability_threshold: 0.54
+      long_probability_threshold: 0.53
+      consensus_enter_threshold: 0.13
+      consensus_flip_threshold: 0.09
+      exit_band: 0.04
+    Heavy:
+      ev_threshold: 0.00015
+      min_atr_fraction: 0.0013
+      short_probability_threshold: 0.58
+      long_probability_threshold: 0.56
+      consensus_enter_threshold: 0.17
+      consensus_flip_threshold: 0.11
+      exit_band: 0.04
+
+adaptive_mode:
+  enabled: false
+  hold_minutes: 30
+  cooldown_minutes: 30
+  medium_to_light_when_no_trades: true
+  heavy_on_loss_streak: 3
+  heavy_win_rate_lookback: 8
+  heavy_on_win_rate_below: 0.25
+
+feature_store:
+  recipe_version: feature_store_v2
+  include_optional_futures_context: true
+
+regime:
+  # Approved governance scope: calculate and publish shadow telemetry only.
+  # Regime outputs must not scale, block, size, approve, or execute trades.
+  enabled: true
+  crisis_realized_vol_z: 3.0
+  high_realized_vol_z: 1.75
+  funding_abs_z_block: 3.0
+  open_interest_abs_z_block: 3.0
+  weak_trend_strength: 0.35
+  squeeze_width_threshold: 0.025
+  # Candidate-only diagnostic scales retained for shadow reporting; never applied at runtime.
+  high_vol_score_scale: 0.70
+  stress_score_scale: 0.60
+  rangebound_score_scale: 0.75
+
+trading:
+  fees_bps: 3.0
+  slippage_bps: 2.0
+  spread_bps: 1.0
+  funding_bps: 0.0
+  min_profit_atr_mult: 0.20
+  ev_threshold: -0.00005
+  meta_threshold: 0.50
+  min_atr_fraction: 0.0008
+  short_probability_threshold: 0.51
+  long_probability_threshold: 0.51
+  signal_cooldown_sec: 10
+
+risk:
+  account_balance_usd: 1000.0
+  risk_per_trade: 0.01
+  sl_atr_mult: 1.0
+  tp_atr_mult: 1.5
+  max_notional_usd: 5000.0
+  min_notional_usd: 25.0
+  max_total_exposure_usd: 7500.0
+  max_concurrent_positions: 10
+  max_symbol_notional_usd: 1500.0
+  max_same_direction_exposure_usd: 4500.0
+  max_risk_distortion_fraction: 0.35
+  daily_loss_limit_usd: 75.0
+  max_drawdown_fraction: 0.12
+  max_correlated_positions: 2
+  correlation_groups: {}
+  symbol_expectancy_guard:
+    enabled: true
+    lookback_trades: 10
+    min_trades: 5
+    min_win_rate: 0.30
+    min_expectancy_usd: -2.0
+    max_recent_loss_usd: -50.0
+    cooldown_minutes: 240
+  adaptive_stops:
+    enabled: true
+    lookback_trades: 20
+    min_trades: 8
+    min_sl_atr_mult: 0.8
+    max_sl_atr_mult: 2.2
+    min_tp_atr_mult: 1.0
+    max_tp_atr_mult: 3.2
+    mae_safety_mult: 1.15
+    mfe_capture_mult: 0.85
+    min_reward_risk_ratio: 1.10
+
+runtime:
+  dashboard_refresh_ms: 250
+  monitoring_fast_snapshot_interval_sec: 0.5
+  monitoring_heavy_snapshot_interval_sec: 3
+  market_poll_seconds: 5
+  execution_price_refresh_seconds: 0.5
+  execution_price_max_age_seconds: 2
+  allow_live_refresh_fallback: false
+  price_max_age_seconds: 180
+  paper_validation_min_decisions: 100
+  paper_validation_max_readiness_blocker_fraction: 0.35
+  paper_validation_min_entry_candidates: 5
+  execution_mode: paper
+  allow_unreconciled_live_mode: false
+  live_canary_enabled: true
+  live_canary_max_symbols: 1
+  live_canary_max_notional_usd: 50.0
+  live_canary_max_concurrent_positions: 1
+  live_canary_require_testnet: true
+
+# Live execution is intentionally not configured by uncommenting a second runtime block.
+# Keep this committed file paper-safe by default; use live readiness scripts plus
+# explicit environment enablement when preparing a controlled live candidate.
+
+
+shutdown:
+  enabled: true
+  report_on_exit: true
+  paper_position_policy: snapshot_only
+  live_position_policy: fail_closed_snapshot_only
+  live_force_close_requires_reconciliation: true
+  coordinator_join_timeout_sec: 15.0
+
+exchange:
+  futures_rest_base_url: https://fapi.binance.com
+  api_key: ""
+  api_secret: ""
+  recv_window_ms: 5000
+  use_testnet: true
+  position_reconciliation_enabled: true
+  require_reconciliation_for_live: true
+  max_reconciliation_age_sec: 30
+
+monitoring:
+  # Keep the dashboard isolated from trading/training controllers by default.
+  # Run it as its own process with: python3 main.py --mode dashboard
+  embedded_in_all_mode: false
+  uvicorn_log_level: info
+  auth_token: "1268118"
+  max_events: 300
+  max_alerts: 100
+  max_market_updates: 100
+  max_recent_training_results: 120
+  max_recent_decisions: 50
+  max_recent_signals: 100
+  max_backtest_open_positions: 100
+  max_backtest_recent_closed: 50
+  max_registry_entries: 500
+  host: "127.0.0.1"
+  port: 8000
+
+telegram:
+  enabled: false
+  bot_token: ""
+  chat_id: ""
+  poll_interval_sec: 2.0
+  command_cooldown_sec: 2.0
+  
+live_guard:
+  require_gbm: false
+  require_dqn: false
+  min_symbols: 5

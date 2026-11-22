@@ -1,0 +1,17 @@
+symbols:
+- BTCUSDT
+- ETHUSDT
+- ZECUSDT
+- SOLUSDT
+- HYPEUSDT
+- WLDUSDT
+- QNTUSDT
+- XRPUSDT
+- AINUSDT
+- NEARUSDT
+pinned_symbols:
+- BTCUSDT
+- ETHUSDT
+skip_symbols: []
+universe_source: tech_rev_lifecycle_export
+last_refresh_ts: 1793127789

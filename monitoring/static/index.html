@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Auto Trader Ops Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css?v=step22" />
+  <script>
+    window.__AUTO_TRADER_BASE_PATH__ = window.location.pathname.replace(/\/$/, "");
+    window.__AUTO_TRADER_BOOTSTRAP__ = "inline snapshot ok";
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Auto Trader Ops Board</h1>
+      <div class="muted">Execution, training, inference and incident state on one screen</div>
+    </div>
+    <div class="topbar-right">
+      <div class="theme-switcher">
+        <label for="themeSelect" class="label">Theme</label>
+        <select id="themeSelect" class="theme-select">
+          <option value="current">Current</option>
+          <option value="dark">Dark</option>
+          <option value="grey">Grey</option>
+          <option value="light">Light</option>
+        </select>
+      </div>
+      <button id="logoutButton" class="ghost-button hidden" type="button">Logout</button>
+      <div class="status-chip"><span class="label">Status</span><span id="globalStatus" class="badge neutral">starting</span></div>
+      <div class="status-chip"><span class="label">Updated</span><strong id="lastUpdated">--</strong></div>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <section class="card health-strip slim-strip">
+      <div class="metric"><span class="label">Mode</span><strong id="launcherMode">--</strong></div>
+      <div class="metric"><span class="label">Uptime</span><strong id="uptime">--</strong></div>
+      <div class="metric"><span class="label">Binance</span><strong id="binanceStatus">--</strong></div>
+      <div class="metric"><span class="label">Trading Ready</span><strong id="tradingReadiness">--</strong><small id="tradingReadinessDetail" class="metric-detail">--</small></div>
+      <div class="metric"><span class="label">Market DB</span><strong id="dbStatus">--</strong></div>
+      <div class="metric"><span class="label">Warnings</span><strong id="warningCount">0</strong></div>
+      <div class="metric"><span class="label">Errors</span><strong id="errorCount">0</strong></div>
+    </section>
+
+    <section class="card controllers-card">
+      <div class="section-head"><h3>Controllers</h3></div>
+      <div id="controllers" class="controllers-row"></div>
+    </section>
+
+    <section class="dashboard-grid">
+      <section class="card signals-card popup-enabled" id="signalsCard">
+        <div class="section-head"><h3>Signal Generator</h3><button type="button" class="popup-btn" data-popup-target="signalsCard" aria-label="Enlarge Signal Generator">⤢</button></div>
+        <div class="table-shell scroll-body flex-fill compact-table-shell">
+          <table>
+            <thead><tr><th>Symbol</th><th>Gate / Mode</th><th>Position</th><th>1m</th><th>3m</th><th>5m</th><th>15m</th><th>Final Action</th><th>Reason</th></tr></thead>
+            <tbody id="signalsBody"></tbody>
+          </table>
+        </div>
+        <details class="signal-messages-details compact-top-gap">
+          <summary>Decision Messages</summary>
+          <div id="signalMessages" class="scroll-body compact-stack signal-messages"></div>
+        </details>
+      </section>
+
+      <section class="card execution-card popup-enabled" id="executionCard">
+        <div class="section-head"><h3>Execution</h3><button type="button" class="popup-btn" data-popup-target="executionCard" aria-label="Enlarge Execution">⤢</button></div>
+        <div class="execution-summary-grid compact-stats-grid">
+          <div class="metric-chip"><span>Open Trades</span><strong id="execOpenTrades">0</strong></div>
+          <div class="metric-chip"><span>Completed</span><strong id="backtestTrades">0</strong></div>
+          <div class="metric-chip"><span>Wins</span><strong id="backtestWins">0</strong></div>
+          <div class="metric-chip"><span>Losses</span><strong id="backtestLosses">0</strong></div>
+          <div class="metric-chip"><span>Total PnL</span><strong id="backtestTotalPnl">0.00</strong></div>
+          <div class="metric-chip"><span>Win Rate</span><strong id="backtestWinRate">0.00</strong></div>
+        </div>
+        <div class="subsection-title">Open Positions</div>
+        <div class="table-shell compact-table-shell execution-open-table">
+          <table>
+            <thead><tr><th>Symbol</th><th>Side</th><th>Mode</th><th>Entry Price</th><th>Last Price</th><th>Last Price TS</th><th>Est. PnL</th></tr></thead>
+            <tbody id="executionOpenBody"></tbody>
+          </table>
+        </div>
+        <div class="subsection-title compact-top-gap">Messages</div>
+        <div id="executionMessages" class="scroll-body execution-messages compact-stack"></div>
+      </section>
+
+      <section class="card training-card popup-enabled" id="trainingCard">
+        <div class="section-head"><h3>Training</h3><button type="button" class="popup-btn" data-popup-target="trainingCard" aria-label="Enlarge Training">⤢</button></div>
+        <div id="registryCounts" class="pill-row compact-pills"></div>
+        <div class="training-top-grid">
+          <div class="kv"><span>Due Jobs</span><strong id="dueJobsCount">0</strong></div>
+          <div class="kv"><span>Queued</span><strong id="queuedJobsCount">0</strong></div>
+          <div class="kv"><span>Inflight</span><strong id="inflightCount">0</strong></div>
+          <div class="kv"><span>Blocked</span><strong id="blockedJobsCount">0</strong></div>
+          <div class="kv"><span>Timed Out</span><strong id="timedOutCount">0</strong></div>
+          <div class="kv"><span>Retry Threshold</span><strong id="retryThreshold">0</strong></div>
+        </div>
+        <div class="training-model-columns">
+          <section class="model-panel rf-panel">
+            <div class="model-head"><h4>RF</h4><span class="mini-badge">Pending <strong id="rfPending">0</strong></span></div>
+            <div class="model-grid">
+              <div class="kv"><span>Current</span><strong id="currentRf">--</strong></div>
+              <div class="kv"><span>Progress</span><strong id="rfProgress">0%</strong></div>
+            </div>
+            <progress id="rfProgressBar" value="0" max="100"></progress>
+            <div class="model-message" id="lastRfMessage">RF: --</div>
+          </section>
+          <section class="model-panel gbm-panel">
+            <div class="model-head"><h4>GBM</h4><span class="mini-badge">Pending <strong id="gbmPending">0</strong></span></div>
+            <div class="model-grid">
+              <div class="kv"><span>Current</span><strong id="currentGbm">--</strong></div>
+              <div class="kv"><span>Progress</span><strong id="gbmProgress">0%</strong></div>
+            </div>
+            <progress id="gbmProgressBar" value="0" max="100"></progress>
+            <div class="model-message" id="lastGbmMessage">GBM: --</div>
+          </section>
+          <section class="model-panel policy-panel dqn-panel">
+            <div class="model-head"><h4>Confirmatory Policy</h4><span class="mini-badge">Pending <strong id="dqnPending">0</strong></span></div>
+            <div class="model-grid">
+              <div class="kv"><span>Current</span><strong id="currentDqn">--</strong></div>
+              <div class="kv"><span>Progress</span><strong id="dqnProgress">0%</strong></div>
+            </div>
+            <progress id="dqnProgressBar" value="0" max="100"></progress>
+            <div class="model-message" id="lastDqnMessage">Confirmatory Policy: --</div>
+          </section>
+        </div>
+        <div class="timed-out-head compact-top-gap">
+          <strong>Timed-out / blocked symbols</strong>
+          <span class="muted">retry lifecycle and manual control</span>
+          <div class="head-actions"><button type="button" id="retryAllBlockedBtn" class="popup-btn action-btn">Retry All Blocked</button></div>
+        </div>
+        <div class="table-shell timed-table compact-table-shell">
+          <table>
+            <thead><tr><th>Symbol</th><th>Status</th><th>Fails</th><th>Cooldown</th><th>Left</th><th>Retry At</th><th>Blocked</th><th>Auto Retry</th><th>Last failure</th><th>Action</th></tr></thead>
+            <tbody id="timedOutBody"></tbody>
+          </table>
+        </div>
+        <details class="scheduler-details compact-top-gap">
+          <summary>Registry by model</summary>
+          <div id="registryByModel" class="compact-stack mini-stack large-mini-stack"></div>
+        </details>
+      </section>
+
+      <section class="card training-results-card popup-enabled" id="trainingResultsCard">
+        <div class="section-head"><h3>Training Results</h3><button type="button" class="popup-btn" data-popup-target="trainingResultsCard" aria-label="Enlarge Training Results">⤢</button></div>
+        <div class="table-shell scroll-body flex-fill compact-table-shell">
+          <table>
+            <thead><tr><th>Symbol</th><th>15m</th><th>5m</th><th>3m</th><th>1m</th><th>Last Update</th></tr></thead>
+            <tbody id="trainingResultsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="bottom-row two-up-row">
+        <section class="card control-card popup-enabled" id="controlCard">
+          <div class="section-head"><h3>Control Plane</h3><button type="button" class="popup-btn" data-popup-target="controlCard" aria-label="Enlarge Control Plane">⤢</button></div>
+          <div class="three-col-grid stats-grid compact-stats-grid">
+            <div class="kv"><span>Paused</span><strong id="cpPaused">--</strong></div>
+            <div class="kv"><span>Pause Reason</span><strong id="cpPauseReason">--</strong></div>
+            <div class="kv"><span>Circuit</span><strong id="cpCircuit">--</strong></div>
+          </div>
+          <div class="head-actions compact-top-gap action-row">
+            <button type="button" id="pauseTradingBtn" class="popup-btn action-btn">Pause</button>
+            <button type="button" id="resumeTradingBtn" class="popup-btn action-btn">Resume</button>
+            <button type="button" id="resetCircuitBtn" class="popup-btn action-btn">Reset Circuit</button>
+          </div>
+          <div class="subsection-title compact-top-gap">Recent Control Actions</div>
+          <div id="controlActions" class="scroll-body compact-stack mini-stack large-mini-stack"></div>
+          <div class="subsection-title compact-top-gap">Decision Lineage</div>
+          <div id="decisionLineage" class="scroll-body compact-stack mini-stack large-mini-stack"></div>
+        </section>
+
+        <section class="card observability-card popup-enabled" id="observabilityCard">
+          <div class="section-head"><h3>Runtime Observability</h3><button type="button" class="popup-btn" data-popup-target="observabilityCard" aria-label="Enlarge Runtime Observability">⤢</button></div>
+          <div class="three-col-grid stats-grid compact-stats-grid">
+            <div class="kv"><span>Fresh Rows</span><strong id="obsFreshRows">0</strong></div>
+            <div class="kv"><span>Stale Rows</span><strong id="obsStaleRows">0</strong></div>
+            <div class="kv"><span>Shadow Divergence</span><strong id="obsShadowDivergence">0.00</strong></div>
+          </div>
+          <div class="three-col-grid stats-grid compact-stats-grid compact-top-gap">
+            <div class="kv"><span>Avg Score</span><strong id="obsAvgScore">--</strong></div>
+            <div class="kv"><span>Active Models</span><strong id="obsActiveModels">0</strong></div>
+            <div class="kv"><span>Runtime Equity</span><strong id="obsRuntimeEquity">--</strong></div>
+          </div>
+          <div class="subsection-title compact-top-gap">Drift &amp; Freshness Summary</div>
+          <div id="observabilitySummary" class="scroll-body compact-stack mini-stack large-mini-stack"></div>
+        </section>
+      </div>
+
+      <div class="bottom-row single-row">
+        <section class="card model-versions-card" id="modelVersionsCard">
+          <div class="section-head"><h3>Model Versions</h3><button type="button" class="collapse-btn" data-target="modelVersionsCard">–</button></div>
+          <div class="card-collapse-body">
+            <div class="table-shell scroll-body flex-fill compact-table-shell">
+              <table>
+                <thead><tr><th>Model</th><th>Symbol</th><th>Interval</th><th>Role</th><th>Stage</th><th>Candidate</th><th>Feature Set</th><th>Promoted / Updated</th><th>Action</th></tr></thead>
+                <tbody id="modelVersionsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="bottom-row single-row">
+        <section class="card market-card" id="marketCard">
+          <div class="section-head"><h3>Market Update</h3><button type="button" class="collapse-btn" data-target="marketCard">–</button></div>
+          <div class="card-collapse-body">
+            <div class="three-col-grid stats-grid compact-stats-grid">
+              <div class="kv"><span>Universe source</span><strong id="marketUniverseSource">--</strong></div>
+              <div class="kv"><span>Universe count</span><strong id="marketUniverseCount">0</strong></div>
+              <div class="kv"><span>Last refresh</span><strong id="marketLastRefresh">--</strong></div>
+            </div>
+            <div class="three-col-grid stats-grid compact-stats-grid compact-top-gap">
+              <div class="kv"><span>Price Cache</span><strong id="marketPriceCacheStatus">--</strong></div>
+              <div class="kv"><span>Priced</span><strong id="marketPricedCount">0/0</strong></div>
+              <div class="kv"><span>Cache Age</span><strong id="marketPriceCacheAge">--</strong></div>
+            </div>
+            <div class="three-col-grid stats-grid compact-stats-grid compact-top-gap">
+              <div class="kv"><span>Missing Prices</span><strong id="marketMissingPrices">0</strong></div>
+              <div class="kv"><span>Stale Prices</span><strong id="marketStalePrices">0</strong></div>
+              <div class="kv"><span>Max Price Age</span><strong id="marketMaxPriceAge">--</strong></div>
+            </div>
+            <div id="marketPriceDiagnostics" class="diagnostic-strip compact-top-gap">--</div>
+            <div class="table-shell scroll-body flex-fill small-table compact-table-shell">
+              <table>
+                <thead><tr><th>Symbol</th><th>TF</th><th>Rows</th><th>Status</th><th>Last TS</th></tr></thead>
+                <tbody id="marketUpdatesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="bottom-row single-row">
+        <section class="card trade-history-card" id="tradeHistoryCard">
+          <div class="section-head"><h3>Trade History</h3><button type="button" class="collapse-btn" data-target="tradeHistoryCard">–</button></div>
+          <div class="card-collapse-body">
+            <div class="table-shell scroll-body flex-fill compact-table-shell trade-history-table">
+              <table>
+                <thead><tr><th>Symbol</th><th>Action</th><th>Mode</th><th>Entry Time</th><th>Exit Time</th><th>Duration</th><th>Amount</th><th>Entry Price</th><th>Exit Price</th><th>PnL</th><th>Exit Reason</th></tr></thead>
+                <tbody id="tradeHistoryBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card feed-card" id="feedCard">
+        <div class="section-head"><h3>Alerts &amp; Event Feed</h3><button type="button" class="collapse-btn" data-target="feedCard">–</button></div>
+        <div class="card-collapse-body"><div id="eventFeed" class="scroll-body feed"></div></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="popupOverlay" class="popup-overlay hidden" aria-hidden="true">
+    <div class="popup-backdrop" data-popup-close="1"></div>
+    <div class="popup-dialog" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+      <div class="popup-head">
+        <h3 id="popupTitle">Expanded View</h3>
+        <button type="button" id="popupClose" class="popup-close-btn" aria-label="Close expanded view">✕</button>
+      </div>
+      <div id="popupContent" class="popup-content"></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=step62-ui-stability"></script>
+</body>
+</html>
